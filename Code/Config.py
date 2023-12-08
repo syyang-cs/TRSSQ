@@ -19,7 +19,7 @@ class Config(object):
         self.val_rate=0.05
 
         # path
-        self.base_path=r'/root/copy/subtra/'
+        self.base_path=r'../'
         self.data_path = self.base_path + 'data' + '/' + self.dataset
         self.result_file = self.base_path+"5_1_result/result_"+self.dataset+'/'
         self.model_path=self.base_path+'5_1_result/'+'model_'+self.dataset+'/'
