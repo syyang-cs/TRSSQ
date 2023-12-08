@@ -1,5 +1,7 @@
 # TRSSQ
 
-tar -zxvf data.tar.gz
-cd Code
-sh run.sh
+
+
+    tar -zxvf data.tar.gz
+    cd Code
+    sh run.sh
