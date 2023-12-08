@@ -7,20 +7,21 @@ import os
 import torch.nn as nn
 from torch import optim
 import torch
-from sklearn.metrics import  ndcg_score
+from sklearn.metrics import  ndcg_score,mean_squared_error
 from tqdm import tqdm
 import math
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 from models import Pair_loss
 
-
+def my_metrics(y, y_p):
+    return mean_squared_error(y, y_p)
 
 
 
 def train_model(model, train_dataloader, val_dataloader, train_config):
     model.to(device)
-    loss_fn = Pair_loss()
+    loss_fn = Pair_loss.Pair_loss()
     # loss_fn = eval(train_config.loss_func)
     loss_fn.to(device)
 

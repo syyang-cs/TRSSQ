@@ -21,9 +21,9 @@ class Config(object):
         # path
         self.base_path=r'../'
         self.data_path = self.base_path + 'data' + '/' + self.dataset
-        self.result_file = self.base_path+"5_1_result/result_"+self.dataset+'/'
-        self.model_path=self.base_path+'5_1_result/'+'model_'+self.dataset+'/'
-        self.score_path = self.base_path + '5_1_result/' + 'score_' + self.dataset + '/'
+        self.result_file = self.base_path+"/"
+        self.model_path=self.base_path+"/"
+        self.score_path = self.base_path + "/"
 
 
 
