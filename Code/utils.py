@@ -16,6 +16,8 @@ from models import Pair_loss
 
 
 
+
+
 def train_model(model, train_dataloader, val_dataloader, train_config):
     model.to(device)
     loss_fn = Pair_loss()
