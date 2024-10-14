@@ -275,3 +275,166 @@ def pre_pair(table, k=0.05):
     return p0
 
 
+def collate_fn_T3S(data):
+    # que_list,score1,score2,  tra1_list,tra2_list,t_grid_list1,t_grid_list2,g_grid_list
+    que = []
+    score1 = []
+    score2 = []
+    tra1_list = []
+    tra2_list = []
+    t_grid_list1 = []
+    t_grid_list2 = []
+    g_grid_list = []
+
+    for i in data:
+        que.append(torch.tensor(i[0]))
+        score1.append(torch.tensor(i[1]))
+        score2.append(torch.tensor(i[2]))
+        tra1_list.append(torch.tensor(i[3]))
+        tra2_list.append(torch.tensor(i[4]))
+        t_grid_list1.append(torch.tensor(i[5]))
+        t_grid_list2.append(torch.tensor(i[6]))
+        g_grid_list.append(torch.tensor(i[7]))
+
+    tra1_list = pad_sequence(tra1_list, batch_first=True)
+    tra2_list = pad_sequence(tra2_list, batch_first=True)
+    t_grid_list1 = pad_sequence(t_grid_list1, batch_first=True)
+    t_grid_list2 = pad_sequence(t_grid_list2, batch_first=True)
+    que = pad_sequence(que, batch_first=True)
+    g_grid_list = pad_sequence(g_grid_list, batch_first=True)
+
+    # tra1_list = torch.cat([tra1_list, t_grid_list1], dim=2)
+    # tra2_list = torch.cat([tra2_list, t_grid_list2], dim=2)
+    # que = torch.cat([que, g_grid_list], dim=2)
+
+    return que, torch.tensor(score1, dtype=torch.float32), torch.tensor(score2,
+                                                                        dtype=torch.float32), tra1_list, tra2_list, t_grid_list1, t_grid_list2, g_grid_list
+def collate_fn_T3S_s(data):
+    score = []
+    tra = []
+    que = []
+    grid_tra = []
+    grid_que = []
+
+    for i in data:
+        score.append(torch.tensor(i[0]))
+        tra.append(torch.tensor(i[1]))
+        que.append(torch.tensor(i[2]))
+        grid_tra.append(torch.tensor(i[3]))
+        grid_que.append(torch.tensor(i[4]))
+
+    tra = pad_sequence(tra, batch_first=True)
+    que = pad_sequence(que, batch_first=True)
+
+    grid_tra = pad_sequence(grid_tra, batch_first=True)
+    grid_que = pad_sequence(grid_que, batch_first=True)
+
+    return tra, que, torch.tensor(score, dtype=torch.float32).view(-1, 1), grid_tra, grid_que
+def get_data_grid(config):
+    print('Loading Data!!!')
+
+    # pass    print('Loading Data!!!')
+    base_path = config.data_path
+
+    print('Loading Data!!!')
+    q_idx = '_{}_{}'.format(config.query_min_len, config.query_max_len)
+    d_idx = '_{}_{}'.format(config.data_min_len, config.data_max_len)
+    score_table_path = base_path + '/{}_{}_'.format(config.query_min_len, config.data_min_len) + config.metric
+    t_table_path = os.path.join(base_path, 'tra_Frame_td') + d_idx + '_N'
+    q_table_path = os.path.join(base_path, 'tra_Frame_tq') + q_idx + '_N'
+
+    tra_Frame_tdgride_path = os.path.join(base_path, 'tra_Frame_td') + d_idx + 'gride_N'
+    tra_Frame_tqgride_path = os.path.join(base_path, 'tra_Frame_tq') + q_idx + 'gride_N'
+
+    score_table = pd.read_csv(score_table_path)
+    score_table.columns = ['que_index', 'tra_idx', 's', 'e', 'score']
+    if config.task=='tra':
+
+        score_table['t'] = score_table['e'] - score_table['s']
+        score_table = score_table[score_table['t'] > 2].drop(['t'], axis=1)
+
+    t_table = pd.read_pickle(t_table_path)
+    q_table = pd.read_pickle(q_table_path)
+    t_grid = pd.read_pickle(tra_Frame_tdgride_path)
+    q_grid = pd.read_pickle(tra_Frame_tqgride_path)
+
+    print('Loading Data  finish!!')
+    if config.metric == 'edr':
+        score_table['score'] = score_table['score'] / config.query_max_len
+    return score_table, t_table, q_table, t_grid, q_grid
+
+
+class get_Dataset_grid_pair():
+    def __init__(self, score_table, t_table, q_table, t_grid, q_grid, task='subtra'):  # 设置初始信息
+        '''
+
+        :param score_table:
+        :param t_table: trajectory ( id , trajectory list)
+        :param q_table: qurey (id , qurey list)
+        '''
+        self.score_table, self.t_table, self.q_table = score_table, t_table, q_table
+        self.t_grid, self.q_grid = t_grid, q_grid
+        self.task = task
+
+    def __len__(self):  # 返回长度
+        return len(self.score_table)
+
+    def __getitem__(self, item):  # 根据item返回数据
+
+        score1 = self.score_table.iloc[item]['score1']
+        score2 = self.score_table.iloc[item]['score2']
+        tra_index1 = self.score_table.iloc[item]['tra_idx1']
+        tra_index2 = self.score_table.iloc[item]['tra_idx2']
+        que_index = self.score_table.iloc[item]['que_index']
+
+        que_list = self.q_table.iloc[int(que_index)]['tra']
+
+        if self.task == 'tra':
+            s1, e1 = self.score_table.iloc[item]['s1'], self.score_table.iloc[item]['e1']
+            s2, e2 = self.score_table.iloc[item]['s2'], self.score_table.iloc[item]['e2']
+            tra1_list = self.t_table.iloc[int(tra_index1)]['tra'][int(s1):int(e1)]
+            tra2_list = self.t_table.iloc[int(tra_index2)]['tra'][int(s2):int(e2)]
+            t_grid_list1 = self.t_grid.iloc[int(tra_index1)]['tra_gride'][int(s1):int(e1)]
+            t_grid_list2 = self.t_grid.iloc[int(tra_index2)]['tra_gride'][int(s2):int(e2)]
+        else:
+            tra1_list = self.t_table.iloc[int(tra_index1)]['tra']
+            tra2_list = self.t_table.iloc[int(tra_index2)]['tra']
+            t_grid_list1 = self.t_grid.iloc[int(tra_index1)]['tra_gride']
+            t_grid_list2 = self.t_grid.iloc[int(tra_index2)]['tra_gride']
+
+        g_grid_list = self.q_grid.iloc[int(que_index)]['tra_gride']
+        return que_list, score1, score2, tra1_list, tra2_list, t_grid_list1, t_grid_list2, g_grid_list
+
+class get_Dataset_grid():
+    def __init__(self, score_table, t_table, q_table, t_grid, q_grid, task='subtra'):  # 设置初始信息
+        '''
+
+        :param score_table:
+        :param t_table: trajectory ( id , trajectory list)
+        :param q_table: qurey (id , qurey list)
+        '''
+        self.score_table, self.t_table, self.q_table = score_table, t_table, q_table
+        self.t_grid, self.q_grid = t_grid, q_grid
+        self.task = task
+
+    def __len__(self):  # 返回长度
+        return len(self.score_table)
+
+    def __getitem__(self, item):  # 根据item返回数据
+        score = self.score_table.iloc[item]['score']
+
+        tra_index = self.score_table.iloc[item]['tra_idx']
+        que_index = self.score_table.iloc[item]['que_index']
+        if self.task == 'tra':
+            s = self.score_table.iloc[item]['s']
+            e = self.score_table.iloc[item]['e']
+            tra_list = self.t_table.iloc[int(tra_index)]['tra'][int(s):int(e)]
+            t_grid_list = self.t_grid.iloc[int(tra_index)]['tra_gride'][int(s):int(e)]
+        else:
+            tra_list = self.t_table.iloc[int(tra_index)]['tra']
+            t_grid_list = self.t_grid.iloc[int(tra_index)]['tra_gride']
+
+        que_list = self.q_table.iloc[int(que_index)]['tra']
+        q_grid_list = self.q_grid.iloc[int(que_index)]['tra_gride']
+
+        return score, tra_list, que_list, t_grid_list, q_grid_list
